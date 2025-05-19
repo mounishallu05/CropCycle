@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}My Fields - CropCycle{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="fas fa-map-marked-alt me-2"></i>My Fields</h2>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{{ url_for('add_field') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New Field
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    {% if fields %}
+        {% for field in fields %}
+            <div class="col-md-6 col-xl-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ field.name }}</h5>
+                        <span class="badge bg-primary">{{ field.area_acres }} acres</span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Location:</strong> {{ field.location or 'Not specified' }}</p>
+                        <p><strong>Soil Type:</strong> {{ field.soil_type or 'Not specified' }}</p>
+                        
+                        {% if field.current_crops %}
+                            <h6 class="mt-4">Current Crops</h6>
+                            <ul class="list-group list-group-flush">
+                                {% for field_crop in field.current_crops %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                                        {{ field_crop.crop.name }}
+                                        {% if field_crop.status == 'planned' %}
+                                            <span class="badge bg-info">Planned</span>
+                                        {% elif field_crop.status == 'planted' %}
+                                            <span class="badge bg-success">Planted</span>
+                                        {% elif field_crop.status == 'harvested' %}
+                                            <span class="badge bg-warning text-dark">Harvested</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-center text-muted my-4">
+                                <i class="fas fa-seedling fa-2x mb-2"></i>
+                                <p>No crops currently planted</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer d-flex justify-content-between">
+                        <a href="{{ url_for('plan_rotation', field_id=field.field_id) }}" class="btn btn-outline-primary">
+                            <i class="fas fa-sync-alt me-1"></i>Plan Rotation
+                        </a>
+                        <button class="btn btn-outline-secondary" disabled>
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center p-5">
+                    <i class="fas fa-map-marked-alt fa-4x text-muted mb-3"></i>
+                    <h3>No Fields Added Yet</h3>
+                    <p class="lead">Start by adding your first field to begin planning your crop rotations.</p>
+                    <a href="{{ url_for('add_field') }}" class="btn btn-primary mt-3">
+                        <i class="fas fa-plus me-2"></i>Add Your First Field
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

@@ -1,0 +1,538 @@
+{% extends 'base.html' %}
+
+{% block title %}Plan Rotation - {{ field.name }} - CropCycle{% endblock %}
+
+{% block extra_css %}
+<style>
+    .crop-card {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .crop-card:hover {
+        box-shadow: 0 0 10px rgba(0,150,0,0.3);
+        transform: translateY(-2px);
+    }
+    
+    .crop-card.selected {
+        border: 2px solid var(--primary-color);
+        box-shadow: 0 0 15px rgba(0,150,0,0.4);
+    }
+    
+    .rotation-timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -30px;
+        top: 0;
+        height: 100%;
+        width: 2px;
+        background-color: var(--secondary-color);
+    }
+    
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: -36px;
+        top: 15px;
+        height: 12px;
+        width: 12px;
+        border-radius: 50%;
+        background-color: var(--secondary-color);
+    }
+    
+    .soil-parameter {
+        margin-bottom: 10px;
+    }
+    
+    .season-selector {
+        display: flex;
+        margin-bottom: 20px;
+    }
+    
+    .season-item {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        cursor: pointer;
+        border: 1px solid #ddd;
+        transition: all 0.2s;
+    }
+    
+    .season-item:first-child {
+        border-radius: 4px 0 0 4px;
+    }
+    
+    .season-item:last-child {
+        border-radius: 0 4px 4px 0;
+    }
+    
+    .season-item.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    
+    .soil-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <a href="{{ url_for('fields') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Fields
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>Crop Rotation Planning: {{ field.name }}</h2>
+        <p><strong>Size:</strong> {{ field.area_acres }} acres | <strong>Soil Type:</strong> {{ field.soil_type or 'Not specified' }}</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Field and Soil Info -->
+    <div class="col-md-4 mb-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-flask me-2"></i>Soil Analysis</h5>
+            </div>
+            <div class="card-body">
+                {% if soil_tests %}
+                    <p><small>Last test date: {{ soil_tests.test_date }}</small></p>
+                    
+                    <div class="soil-parameter">
+                        <div class="d-flex justify-content-between">
+                            <label>pH</label>
+                            <span>{{ soil_tests.ph_level }}</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ (soil_tests.ph_level / 14) * 100 }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="soil-parameter">
+                        <div class="d-flex justify-content-between">
+                            <label>Nitrogen</label>
+                            <span>{{ soil_tests.nitrogen_level }} ppm</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-primary" role="progressbar" 
+                                 style="width: {{ (soil_tests.nitrogen_level / 100) * 100 }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="soil-parameter">
+                        <div class="d-flex justify-content-between">
+                            <label>Phosphorus</label>
+                            <span>{{ soil_tests.phosphorus_level }} ppm</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-warning" role="progressbar" 
+                                 style="width: {{ (soil_tests.phosphorus_level / 100) * 100 }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="soil-parameter">
+                        <div class="d-flex justify-content-between">
+                            <label>Potassium</label>
+                            <span>{{ soil_tests.potassium_level }} ppm</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-info" role="progressbar" 
+                                 style="width: {{ (soil_tests.potassium_level / 100) * 100 }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="soil-parameter">
+                        <div class="d-flex justify-content-between">
+                            <label>Organic Matter</label>
+                            <span>{{ soil_tests.organic_matter_percentage }}%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ soil_tests.organic_matter_percentage * 10 }}%"></div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center p-4">
+                        <i class="fas fa-vial fa-3x text-muted mb-3"></i>
+                        <p>No soil test data available</p>
+                        <button class="btn btn-sm btn-outline-primary" disabled>Add Soil Test</button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Rotation History</h5>
+            </div>
+            <div class="card-body">
+                {% if rotation_history %}
+                    <div class="rotation-timeline">
+                        {% for entry in rotation_history %}
+                            <div class="timeline-item">
+                                <div class="card">
+                                    <div class="card-body p-3">
+                                        <h6>{{ entry.crop.name }}</h6>
+                                        <p class="mb-1">
+                                            <i class="fas fa-calendar me-1"></i> 
+                                            {{ entry.planting_date }} to {{ entry.harvest_date or 'Present' }}
+                                        </p>
+                                        {% if entry.yield_amount %}
+                                            <p class="mb-1">
+                                                <i class="fas fa-balance-scale me-1"></i>
+                                                {{ entry.yield_amount }} {{ entry.yield_unit }}
+                                            </p>
+                                        {% endif %}
+                                        <div class="mt-2">
+                                            <span class="soil-badge bg-light text-dark">{{ entry.crop.family }}</span>
+                                            {% if entry.crop.nitrogen_fixation %}
+                                                <span class="soil-badge bg-success text-light">N-fixing</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center p-4">
+                        <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                        <p>No rotation history available</p>
+                        <p><small>Add your first crop to begin building history</small></p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Planning Tools -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-sync-alt me-2"></i>Rotation Planning</h5>
+                <button id="get-recommendations-btn" class="btn btn-primary btn-sm">
+                    <i class="fas fa-lightbulb me-1"></i>Get Recommendations
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Season Selector -->
+                <h6 class="mb-2">Select Season for Planting:</h6>
+                <div class="season-selector">
+                    <div class="season-item" data-season="spring">
+                        <i class="fas fa-seedling me-1"></i> Spring
+                    </div>
+                    <div class="season-item active" data-season="summer">
+                        <i class="fas fa-sun me-1"></i> Summer
+                    </div>
+                    <div class="season-item" data-season="fall">
+                        <i class="fas fa-leaf me-1"></i> Fall
+                    </div>
+                    <div class="season-item" data-season="winter">
+                        <i class="fas fa-snowflake me-1"></i> Winter
+                    </div>
+                </div>
+                
+                <!-- Recommendations Section -->
+                <div id="recommendations-section" class="mb-4" style="display: none;">
+                    <h6>Recommended Next Crops:</h6>
+                    <div class="row" id="recommendations-container">
+                        <!-- Recommendations will be inserted here -->
+                    </div>
+                </div>
+                
+                <!-- Crop Selection Section -->
+                <h6 class="mb-3">Available Crops:</h6>
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="crop-search" placeholder="Search crops...">
+                </div>
+                <div class="row" id="crop-list">
+                    {% for crop in crops %}
+                        <div class="col-md-6 col-lg-4 mb-3 crop-item" data-season="{{ crop.growing_season.lower() }}">
+                            <div class="card crop-card h-100" data-crop-id="{{ crop.crop_id }}">
+                                <div class="card-body p-3">
+                                    <h6>{{ crop.name }}</h6>
+                                    <p class="mb-1 small">Family: {{ crop.family }}</p>
+                                    <p class="mb-2 small">Maturity: {{ crop.days_to_maturity }} days</p>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge {% if crop.nitrogen_fixation %}bg-success{% else %}bg-warning{% endif %}">
+                                            {% if crop.nitrogen_fixation %}N-Fixer{% else %}N-Consumer ({{ crop.nitrogen_consumption }}/5){% endif %}
+                                        </span>
+                                        <span class="badge bg-info">Water: {{ crop.water_needs }}/5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Planning Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Add to Rotation Plan</h5>
+            </div>
+            <div class="card-body">
+                <form id="rotation-form" action="#" method="POST">
+                    <input type="hidden" id="selected-crop-id" name="crop_id">
+                    <input type="hidden" id="selected-season" name="season" value="summer">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="selected-crop" class="form-label">Selected Crop</label>
+                            <input type="text" class="form-control" id="selected-crop" readonly placeholder="Select a crop">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="planting-date" class="form-label">Planting Date</label>
+                            <input type="date" class="form-control" id="planting-date" name="planting_date" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="expected-harvest" class="form-label">Expected Harvest Date</label>
+                            <input type="date" class="form-control" id="expected-harvest" name="expected_harvest">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary" disabled id="add-to-plan-btn">
+                            <i class="fas fa-plus me-1"></i>Add to Rotation Plan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Season selector
+        const seasonItems = document.querySelectorAll('.season-item');
+        const cropItems = document.querySelectorAll('.crop-item');
+        const selectedSeasonInput = document.getElementById('selected-season');
+        
+        seasonItems.forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove active class from all items
+                seasonItems.forEach(i => i.classList.remove('active'));
+                // Add active class to clicked item
+                this.classList.add('active');
+                
+                // Update hidden input
+                const selectedSeason = this.dataset.season;
+                selectedSeasonInput.value = selectedSeason;
+                
+                // Filter crops by season
+                cropItems.forEach(cropItem => {
+                    const cropSeason = cropItem.dataset.season.toLowerCase();
+                    if (cropSeason.includes(selectedSeason) || selectedSeason === 'all') {
+                        cropItem.style.display = '';
+                    } else {
+                        cropItem.style.display = 'none';
+                    }
+                });
+            });
+        });
+        
+        // Crop selection
+        const cropCards = document.querySelectorAll('.crop-card');
+        const selectedCropInput = document.getElementById('selected-crop');
+        const selectedCropIdInput = document.getElementById('selected-crop-id');
+        const addToPlanBtn = document.getElementById('add-to-plan-btn');
+        
+        cropCards.forEach(card => {
+            card.addEventListener('click', function() {
+                // Remove selected class from all cards
+                cropCards.forEach(c => c.classList.remove('selected'));
+                // Add selected class to clicked card
+                this.classList.add('selected');
+                
+                // Update selected crop input
+                const cropName = this.querySelector('h6').textContent;
+                const cropId = this.dataset.cropId;
+                selectedCropInput.value = cropName;
+                selectedCropIdInput.value = cropId;
+                
+                // Enable add button
+                addToPlanBtn.disabled = false;
+                
+                // Calculate expected harvest date based on days to maturity
+                const daysToMaturity = parseInt(this.querySelector('p:nth-child(3)').textContent.match(/\d+/)[0]);
+                const plantingDateInput = document.getElementById('planting-date');
+                const harvestDateInput = document.getElementById('expected-harvest');
+                
+                if (plantingDateInput.value) {
+                    const plantingDate = new Date(plantingDateInput.value);
+                    const harvestDate = new Date(plantingDate);
+                    harvestDate.setDate(plantingDate.getDate() + daysToMaturity);
+                    
+                    // Format harvest date as YYYY-MM-DD
+                    const year = harvestDate.getFullYear();
+                    const month = String(harvestDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(harvestDate.getDate()).padStart(2, '0');
+                    harvestDateInput.value = `${year}-${month}-${day}`;
+                }
+            });
+        });
+        
+        // Update harvest date when planting date changes
+        const plantingDateInput = document.getElementById('planting-date');
+        plantingDateInput.addEventListener('change', function() {
+            const selectedCard = document.querySelector('.crop-card.selected');
+            if (selectedCard) {
+                const daysToMaturity = parseInt(selectedCard.querySelector('p:nth-child(3)').textContent.match(/\d+/)[0]);
+                const harvestDateInput = document.getElementById('expected-harvest');
+                
+                const plantingDate = new Date(this.value);
+                const harvestDate = new Date(plantingDate);
+                harvestDate.setDate(plantingDate.getDate() + daysToMaturity);
+                
+                // Format harvest date as YYYY-MM-DD
+                const year = harvestDate.getFullYear();
+                const month = String(harvestDate.getMonth() + 1).padStart(2, '0');
+                const day = String(harvestDate.getDate()).padStart(2, '0');
+                harvestDateInput.value = `${year}-${month}-${day}`;
+            }
+        });
+        
+        // Crop search
+        const cropSearchInput = document.getElementById('crop-search');
+        cropSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            
+            cropItems.forEach(cropItem => {
+                const cropName = cropItem.querySelector('h6').textContent.toLowerCase();
+                const cropFamily = cropItem.querySelector('p:nth-child(2)').textContent.toLowerCase();
+                
+                if (cropName.includes(searchTerm) || cropFamily.includes(searchTerm)) {
+                    cropItem.style.display = '';
+                } else {
+                    cropItem.style.display = 'none';
+                }
+            });
+        });
+        
+        // Get recommendations button
+        const getRecommendationsBtn = document.getElementById('get-recommendations-btn');
+        const recommendationsSection = document.getElementById('recommendations-section');
+        const recommendationsContainer = document.getElementById('recommendations-container');
+        
+        getRecommendationsBtn.addEventListener('click', function() {
+            // Show loading state
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading...';
+            
+            // Get field ID from the URL
+            const pathParts = window.location.pathname.split('/');
+            const fieldId = pathParts[pathParts.length - 1];
+            
+            // Make API request to get recommendations
+            fetch('/api/recommend-rotation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ field_id: fieldId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset button
+                getRecommendationsBtn.disabled = false;
+                getRecommendationsBtn.innerHTML = '<i class="fas fa-lightbulb me-1"></i>Get Recommendations';
+                
+                // Show recommendations section
+                recommendationsSection.style.display = 'block';
+                
+                // Clear previous recommendations
+                recommendationsContainer.innerHTML = '';
+                
+                // Add recommendations
+                data.forEach(crop => {
+                    const html = `
+                        <div class="col-md-4 mb-3">
+                            <div class="card crop-card h-100 border-success" data-crop-id="${crop.id}">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between">
+                                        <h6>${crop.name}</h6>
+                                        <span class="badge bg-success">Recommended</span>
+                                    </div>
+                                    <p class="mb-1 small">Family: ${crop.family}</p>
+                                    <p class="mb-2 small text-success">${crop.reason}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    recommendationsContainer.innerHTML += html;
+                });
+                
+                // Add event listeners to recommendation cards
+                const recommendationCards = recommendationsContainer.querySelectorAll('.crop-card');
+                recommendationCards.forEach(card => {
+                    card.addEventListener('click', function() {
+                        const cropId = this.dataset.cropId;
+                        const cropName = this.querySelector('h6').textContent;
+                        
+                        // Remove selected class from all cards
+                        cropCards.forEach(c => c.classList.remove('selected'));
+                        recommendationCards.forEach(c => c.classList.remove('selected'));
+                        
+                        // Select this card
+                        this.classList.add('selected');
+                        
+                        // Update selected crop input
+                        selectedCropInput.value = cropName;
+                        selectedCropIdInput.value = cropId;
+                        
+                        // Enable add button
+                        addToPlanBtn.disabled = false;
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Error getting recommendations:', error);
+                getRecommendationsBtn.disabled = false;
+                getRecommendationsBtn.innerHTML = '<i class="fas fa-lightbulb me-1"></i>Get Recommendations';
+                alert('Error fetching recommendations. Please try again.');
+            });
+        });
+        
+        // Set today's date as default for planting date
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        plantingDateInput.value = `${year}-${month}-${day}`;
+    });
+</script>
+{% endblock %} 
