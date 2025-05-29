@@ -21,7 +21,7 @@ CropCycle is a web application designed to help farmers manage and optimize thei
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/cropcycle.git
+   git clone https://github.com/mounishallu05/cropcycle.git
    cd cropcycle
    ```
 
